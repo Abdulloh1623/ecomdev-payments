@@ -58,9 +58,9 @@ function Get-RunningServer {
   return $null
 }
 
-function Test-PortFree([int]$port) {
+function Test-Bind([System.Net.IPAddress]$address, [int]$port) {
   try {
-    $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Any, $port)
+    $listener = New-Object System.Net.Sockets.TcpListener($address, $port)
     $listener.Start()
     $listener.Stop()
     return $true
@@ -69,16 +69,39 @@ function Test-PortFree([int]$port) {
   }
 }
 
+function Test-Listening([string]$address, [int]$port) {
+  $client = New-Object System.Net.Sockets.TcpClient
+  try {
+    $attempt = $client.BeginConnect($address, $port, $null, $null)
+    return $attempt.AsyncWaitHandle.WaitOne(300) -and $client.Connected
+  } catch {
+    return $false
+  } finally {
+    $client.Close()
+  }
+}
+
+# Порт свободен, только если его никто не слушает ни по IPv4, ни по IPv6: иначе «localhost»
+# (который часто идёт через ::1) приведёт в браузере к чужому приложению. Проверка привязкой
+# этого не ловит — Windows разрешает занять порт, который другой процесс слушает неэксклюзивно.
+function Test-PortFree([int]$port) {
+  if (-not (Test-Bind ([System.Net.IPAddress]::Any) $port)) { return $false }
+  if (Test-Listening '127.0.0.1' $port) { return $false }
+  if ([System.Net.Sockets.Socket]::OSSupportsIPv6 -and (Test-Listening '::1' $port)) { return $false }
+  return $true
+}
+
 function Get-NewestWrite([string[]]$paths) {
   $files = Get-ChildItem -Path $paths -Recurse -File -ErrorAction SilentlyContinue
   if (-not $files) { return [datetime]::MinValue }
   return ($files | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
 }
 
+# Готов именно наш сервер: отвечает JSON-отчётом должников, а не любой страницей
 function Test-ServerReady([int]$port) {
   try {
-    $res = Invoke-WebRequest -Uri "http://localhost:$port/debtors" -UseBasicParsing -TimeoutSec 2
-    return $res.StatusCode -eq 200
+    $res = Invoke-WebRequest -Uri "http://127.0.0.1:$port/debtors" -UseBasicParsing -TimeoutSec 2
+    return $res.StatusCode -eq 200 -and $res.Content -match '"month"'
   } catch {
     return $false
   }
@@ -111,8 +134,8 @@ function Start-Project {
   $running = Get-RunningServer
   if ($running -and (Test-Path $PortFile)) {
     $port = [int](Get-Content $PortFile -Raw)
-    Warn "Сервер уже запущен (PID $($running.Id)) — открываю http://localhost:$port"
-    Start-Process "http://localhost:$port"
+    Warn "Сервер уже запущен (PID $($running.Id)) — открываю http://127.0.0.1:$port"
+    Start-Process "http://127.0.0.1:$port"
     return
   }
 
@@ -219,9 +242,12 @@ function Start-Project {
     if ($proc.HasExited) { break }
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { Fail 'Сервер не ответил за 30 секунд. Посмотрите сообщения в окне сервера.' }
+  if (-not $ready) {
+    # Окно сервера не закрываем — в нём текст ошибки
+    Fail 'Сервер не ответил за 30 секунд. Причина — в окне сервера; закрыть его можно через stop.bat.'
+  }
 
-  $url = "http://localhost:$port"
+  $url = "http://127.0.0.1:$port"
   Ok "Готово: $url"
   Write-Host ''
   Write-Host "  Веб-страница:  $url" -ForegroundColor White
