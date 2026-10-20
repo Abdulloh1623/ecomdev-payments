@@ -61,7 +61,8 @@ describe('GET /debtors', () => {
   it('удалённый до начала месяца не попадает, удалённый в течение месяца — попадает', async () => {
     await makeStudent(t.db, { deletedOn: '2026-02-20' });
     const leftInMarch = await makeStudent(t.db, { deletedOn: '2026-03-15' });
-    expect((await debtors('2026-03')).body.debtors.map((d: { id: number }) => d.id)).toEqual([leftInMarch.id]);
+    const march = (await debtors('2026-03')).body.debtors;
+    expect(march).toEqual([expect.objectContaining({ id: leftInMarch.id, deleted: true })]);
     expect((await debtors('2026-04')).body.count).toBe(0);
   });
 

@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// В dev-режиме запросы к API проксируются на сервер
+const apiUrl = process.env.API_URL ?? 'http://localhost:3000';
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // В dev-режиме запросы к API проксируются на сервер
     proxy: {
-      '/students': 'http://localhost:3000',
-      '/payments': 'http://localhost:3000',
-      '/debtors': 'http://localhost:3000',
+      '/students': apiUrl,
+      '/payments': apiUrl,
+      '/debtors': apiUrl,
     },
   },
 });

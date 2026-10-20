@@ -57,6 +57,7 @@ export const debtor = z.object({
   monthlyFee: z.number(),
   paid: z.number(),
   debt: z.number(),
+  deleted: z.boolean().describe('Ученик удалён позже (долг за этот месяц остаётся в истории)'),
 });
 
 export const debtorsReport = z.object({

@@ -9,6 +9,7 @@ export interface Debtor {
   monthlyFee: number;
   paid: number;
   debt: number;
+  deleted: boolean;
 }
 
 export interface DebtorsReport {
@@ -35,7 +36,7 @@ export function createDebtorService(db: PrismaClient, timezone: string) {
           createdAt: { lt: nextMonthStart },
           OR: [{ deletedAt: null }, { deletedAt: { gte: monthStart } }],
         },
-        select: { id: true, name: true, phone: true, group: true, monthlyFee: true },
+        select: { id: true, name: true, phone: true, group: true, monthlyFee: true, deletedAt: true },
       });
 
       const sums = await db.payment.groupBy({
@@ -46,9 +47,9 @@ export function createDebtorService(db: PrismaClient, timezone: string) {
       const paidBy = new Map(sums.map((s) => [s.studentId, s._sum.amount ?? 0]));
 
       const debtors = students
-        .map((s) => {
+        .map(({ deletedAt, ...s }) => {
           const paid = paidBy.get(s.id) ?? 0;
-          return { ...s, paid, debt: s.monthlyFee - paid };
+          return { ...s, paid, debt: s.monthlyFee - paid, deleted: deletedAt !== null };
         })
         .filter((d) => d.debt > 0)
         .sort((a, b) => b.debt - a.debt || a.id - b.id);
