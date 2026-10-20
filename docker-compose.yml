@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    # Токен бота и ADMIN_IDS берутся из server/.env, если он есть
+    env_file:
+      - path: server/.env
+        required: false
+    environment:
+      DATABASE_URL: file:/data/app.db
+      PORT: 3000
+      SEED_DEMO: ${SEED_DEMO:-1}
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+volumes:
+  data:
