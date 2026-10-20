@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { Bot } from 'grammy';
 import { AppError } from './errors.js';
 import { currentMonth } from './lib/dates.js';
+import { parseStudentRef, studentCode } from './lib/studentCode.js';
 import type { Services } from './services/index.js';
 
 const TELEGRAM_LIMIT = 4096;
@@ -11,26 +12,24 @@ const HELP = [
   'Учёт оплат учебного центра',
   '',
   '/debt — должники текущего месяца',
-  '/pay <id ученика> <сумма> — внести оплату (дата — сегодня)',
-  'Пример: /pay 3 500000',
+  '/pay <код ученика> <сумма> — внести оплату (дата — сегодня)',
+  'Пример: /pay ST-0003 500000 (можно и просто /pay 3 500000)',
 ].join('\n');
 
 const fmt = (n: number) => n.toLocaleString('ru-RU');
 
 export type PayArgs = { ok: true; studentId: number; amount: number } | { ok: false; error: string };
 
-/** Разбирает аргументы /pay. Сумму можно писать с пробелами: /pay 3 500 000. */
+/** Разбирает аргументы /pay. Ученик — код или id; сумму можно писать с пробелами: /pay ST-0003 500 000. */
 export function parsePayArgs(raw: string): PayArgs {
-  const usage = 'Формат: /pay <id ученика> <сумма>, например /pay 3 500000';
+  const usage = 'Формат: /pay <код ученика> <сумма>, например /pay ST-0003 500000';
   const [idPart, ...amountParts] = raw.trim().split(/\s+/).filter(Boolean);
   const amountPart = amountParts.join('');
   if (!idPart || !amountPart) return { ok: false, error: usage };
-  if (!/^\d+$/.test(idPart) || !/^\d+$/.test(amountPart)) {
-    return { ok: false, error: `id и сумма должны быть целыми положительными числами. ${usage}` };
-  }
-  const studentId = Number(idPart);
+  const studentId = parseStudentRef(idPart);
+  if (!studentId) return { ok: false, error: `Некорректный код ученика «${idPart}». ${usage}` };
+  if (!/^\d+$/.test(amountPart)) return { ok: false, error: `Сумма должна быть целым положительным числом. ${usage}` };
   const amount = Number(amountPart);
-  if (studentId <= 0) return { ok: false, error: 'Некорректный id ученика' };
   if (amount <= 0 || amount > MAX_AMOUNT) return { ok: false, error: `Сумма должна быть от 1 до ${fmt(MAX_AMOUNT)}` };
   return { ok: true, studentId, amount };
 }
@@ -77,7 +76,8 @@ export function createBot({ token, adminIds, services, timezone, log }: BotOptio
     if (report.count === 0) return ctx.reply(`За ${report.month} должников нет.`);
 
     const lines = report.debtors.map(
-      (d, i) => `${i + 1}. #${d.id} ${d.name} (${d.group}) — долг ${fmt(d.debt)} из ${fmt(d.monthlyFee)}`,
+      (d, i) =>
+        `${i + 1}. ${d.code} ${d.name} (${d.groups.map((g) => g.name).join(', ')}) — долг ${fmt(d.debt)} из ${fmt(d.due)}`,
     );
     const text = [`Должники за ${report.month}: ${report.count}, общий долг ${fmt(report.totalDebt)}`, '', ...lines].join(
       '\n',
@@ -93,9 +93,11 @@ export function createBot({ token, adminIds, services, timezone, log }: BotOptio
       const payment = await services.payments.create({ studentId: args.studentId, amount: args.amount });
       const student = await services.students.get(payment.studentId);
       const month = payment.date.slice(0, 7);
-      const { debt } = await services.debtors.balance(student.id, student.monthlyFee, month);
+      const { debt } = await services.debtors.studentMonth(student.id, month);
       const status = debt > 0 ? `Остаток долга за ${month}: ${fmt(debt)}.` : `За ${month} оплачено полностью.`;
-      return ctx.reply(`Оплата внесена: ${student.name}, ${fmt(payment.amount)} (${payment.date}).\n${status}`);
+      return ctx.reply(
+        `Оплата внесена: ${studentCode(student.id)} ${student.name}, ${fmt(payment.amount)} (${payment.date}).\n${status}`,
+      );
     } catch (err) {
       if (err instanceof AppError) return ctx.reply(err.message);
       throw err;

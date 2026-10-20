@@ -15,8 +15,10 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppError } from './errors.js';
 import { debtorRoutes } from './routes/debtors.js';
+import { groupRoutes } from './routes/groups.js';
 import { paymentRoutes } from './routes/payments.js';
 import { studentRoutes } from './routes/students.js';
+import { subjectRoutes } from './routes/subjects.js';
 import { createServices } from './services/index.js';
 
 export interface AppOptions {
@@ -65,6 +67,8 @@ export async function buildApp({ db, timezone, webDist, logger = false }: AppOpt
   await app.register(swaggerUi, { routePrefix: '/docs' });
 
   const services = createServices(db, timezone);
+  await app.register(subjectRoutes, { services });
+  await app.register(groupRoutes, { services });
   await app.register(studentRoutes, { services });
   await app.register(paymentRoutes, { services });
   await app.register(debtorRoutes, { services, timezone });

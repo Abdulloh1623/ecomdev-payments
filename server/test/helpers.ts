@@ -16,6 +16,10 @@ export function setupTestApp() {
   });
   beforeEach(async () => {
     await db.payment.deleteMany();
+    await db.enrollment.deleteMany();
+    await db.groupPrice.deleteMany();
+    await db.group.deleteMany();
+    await db.subject.deleteMany();
     await db.student.deleteMany();
   });
   afterAll(async () => {
@@ -28,20 +32,41 @@ export function setupTestApp() {
 
 let counter = 0;
 
-/** Создаёт ученика напрямую в БД — так можно задать дату записи и удаления. */
-export function makeStudent(
-  db: PrismaClient,
-  overrides: { monthlyFee?: number; createdOn?: string; deletedOn?: string; name?: string } = {},
-) {
+/** Группа в новом предмете. prices: [fromMonth, amount][]; по умолчанию одна цена с 2026-01. */
+export async function makeGroup(db: PrismaClient, opts: { price?: number; prices?: [string, number][]; name?: string } = {}) {
+  counter += 1;
+  const subject = await db.subject.create({ data: { name: `Предмет ${counter}` } });
+  const prices = opts.prices ?? [['2026-01', opts.price ?? 500_000]];
+  return db.group.create({
+    data: {
+      subjectId: subject.id,
+      name: opts.name ?? `Группа ${counter}`,
+      prices: { create: prices.map(([fromMonth, amount]) => ({ fromMonth, amount })) },
+    },
+  });
+}
+
+interface Membership {
+  groupId: number;
+  joinedOn?: string;
+  leftOn?: string;
+}
+
+/** Ученик напрямую в БД: можно задать даты участия в группах и удаления. */
+export function makeStudent(db: PrismaClient, opts: { groups?: Membership[]; deletedOn?: string; name?: string } = {}) {
   counter += 1;
   return db.student.create({
     data: {
-      name: overrides.name ?? `Ученик ${counter}`,
+      name: opts.name ?? `Ученик ${counter}`,
       phone: '+998901234567',
-      group: 'A1',
-      monthlyFee: overrides.monthlyFee ?? 500_000,
-      createdAt: zonedStartOfDay(overrides.createdOn ?? '2026-01-01', TZ),
-      deletedAt: overrides.deletedOn ? zonedStartOfDay(overrides.deletedOn, TZ) : null,
+      deletedAt: opts.deletedOn ? zonedStartOfDay(opts.deletedOn, TZ) : null,
+      enrollments: {
+        create: (opts.groups ?? []).map((g) => ({
+          groupId: g.groupId,
+          joinedOn: g.joinedOn ?? '2026-01-01',
+          leftOn: g.leftOn ?? null,
+        })),
+      },
     },
   });
 }

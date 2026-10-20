@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parsePayArgs, splitMessage } from '../src/bot.js';
+import { activeDays, daysInMonth, priceForMonth, proratedCharge } from '../src/lib/billing.js';
 import { isValidDate, monthDateRange, todayIn, zonedStartOfDay } from '../src/lib/dates.js';
+import { parseStudentRef, studentCode } from '../src/lib/studentCode.js';
 
 describe('даты', () => {
   it('isValidDate отсекает несуществующие даты', () => {
@@ -28,17 +30,64 @@ describe('даты', () => {
   });
 });
 
+describe('начисления', () => {
+  it('дней в месяце', () => {
+    expect(daysInMonth('2026-02')).toBe(28);
+    expect(daysInMonth('2024-02')).toBe(29);
+    expect(daysInMonth('2026-03')).toBe(31);
+  });
+
+  it('дни участия: пересечение [joinedOn, leftOn) с месяцем', () => {
+    expect(activeDays('2026-01-01', null, '2026-03')).toBe(31);
+    expect(activeDays('2026-03-16', null, '2026-03')).toBe(16);
+    expect(activeDays('2026-01-01', '2026-03-11', '2026-03')).toBe(10);
+    expect(activeDays('2026-03-05', '2026-03-06', '2026-03')).toBe(1);
+    expect(activeDays('2026-04-01', null, '2026-03')).toBe(0);
+    expect(activeDays('2026-01-01', '2026-03-01', '2026-03')).toBe(0);
+  });
+
+  it('цена по истории', () => {
+    const prices = [
+      { fromMonth: '2026-04', amount: 450 },
+      { fromMonth: '2026-02', amount: 400 },
+    ];
+    expect(priceForMonth(prices, '2025-06')).toBe(400);
+    expect(priceForMonth(prices, '2026-03')).toBe(400);
+    expect(priceForMonth(prices, '2026-04')).toBe(450);
+    expect(priceForMonth([], '2026-04')).toBe(0);
+  });
+
+  it('пропорция с округлением; полный месяц — ровно цена', () => {
+    expect(proratedCharge(500_000, 31, 31)).toBe(500_000);
+    expect(proratedCharge(500_000, 10, 31)).toBe(161_290);
+    expect(proratedCharge(1, 1, 3)).toBe(0);
+  });
+});
+
+describe('код ученика', () => {
+  it('формат и разбор', () => {
+    expect(studentCode(2)).toBe('ST-0002');
+    expect(studentCode(12345)).toBe('ST-12345');
+    for (const raw of ['ST-0002', 'st-2', 'ST2', '2', ' 0002 ']) expect(parseStudentRef(raw)).toBe(2);
+    for (const raw of ['', 'ST-', 'ST-0', '0', 'abc', 'ST-2a', '-2']) expect(parseStudentRef(raw)).toBeNull();
+  });
+});
+
 describe('бот: разбор /pay', () => {
   it.each([
+    ['ST-0003 500000', { ok: true, studentId: 3, amount: 500_000 }],
     ['3 500000', { ok: true, studentId: 3, amount: 500_000 }],
-    ['  3   500 000 ', { ok: true, studentId: 3, amount: 500_000 }],
+    ['  st-3   500 000 ', { ok: true, studentId: 3, amount: 500_000 }],
   ])('"%s" — корректно', (raw, expected) => {
     expect(parsePayArgs(raw)).toEqual(expected);
   });
 
-  it.each(['', '3', 'abc 100', '3 -100', '3 10.5', '0 100', '3 0', '3 9999999999'])('"%s" — ошибка', (raw) => {
-    expect(parsePayArgs(raw).ok).toBe(false);
-  });
+  it.each(['', '3', 'abc 100', '3 -100', '3 10.5', '0 100', 'ST-0 100', '3 0', '3 9999999999'])(
+    '"%s" — ошибка',
+    (raw) => {
+      expect(parsePayArgs(raw).ok).toBe(false);
+    },
+  );
 });
 
 describe('бот: разбиение сообщений', () => {

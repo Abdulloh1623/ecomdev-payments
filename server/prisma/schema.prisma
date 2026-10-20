@@ -7,17 +7,68 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Subject {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  // Мягкое удаление: группы и история сохраняются
+  deletedAt DateTime?
+  groups    Group[]
+}
+
+model Group {
+  id          Int          @id @default(autoincrement())
+  subjectId   Int
+  subject     Subject      @relation(fields: [subjectId], references: [id])
+  name        String
+  teacher     String?
+  schedule    String?
+  createdAt   DateTime     @default(now())
+  deletedAt   DateTime?
+  prices      GroupPrice[]
+  enrollments Enrollment[]
+
+  @@index([subjectId])
+}
+
+// История цен: цена действует с месяца fromMonth до следующей записи
+model GroupPrice {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  group     Group    @relation(fields: [groupId], references: [id])
+  // Месячная цена в целых единицах валюты
+  amount    Int
+  // YYYY-MM
+  fromMonth String
+  createdAt DateTime @default(now())
+
+  @@unique([groupId, fromMonth])
+}
+
 model Student {
-  id         Int       @id @default(autoincrement())
-  name       String
-  phone      String
-  group      String
-  // Месячная сумма оплаты в целых единицах валюты
-  monthlyFee Int
-  createdAt  DateTime  @default(now())
-  // Мягкое удаление: история оплат сохраняется
-  deletedAt  DateTime?
-  payments   Payment[]
+  id          Int          @id @default(autoincrement())
+  name        String
+  phone       String
+  createdAt   DateTime     @default(now())
+  deletedAt   DateTime?
+  payments    Payment[]
+  enrollments Enrollment[]
+}
+
+// Участие ученика в группе: [joinedOn, leftOn), даты YYYY-MM-DD
+model Enrollment {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  groupId   Int
+  group     Group    @relation(fields: [groupId], references: [id])
+  joinedOn  String
+  // Первый день, когда ученик уже не в группе; null — состоит сейчас
+  leftOn    String?
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+  @@index([groupId])
 }
 
 model Payment {
