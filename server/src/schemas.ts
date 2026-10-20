@@ -159,6 +159,72 @@ export const debtorsReport = z.object({
   debtors: z.array(debtor),
 });
 
+// ── Аналитика ─────────────────────────────────────────────
+
+const rate = z.number().nullable().describe('Собираемость, %; null — ничего не начислено');
+const money = {
+  due: z.number().describe('Начислено'),
+  paid: z.number().describe('Оплачено'),
+  debt: z.number().describe('Долг'),
+};
+
+export const summaryQuery = z.object({
+  from: month.optional().describe('Первый месяц; по умолчанию — 5 месяцев до to'),
+  to: month.optional().describe('Последний месяц; по умолчанию — текущий'),
+});
+
+export const analyticsSummary = z.object({
+  from: z.string(),
+  to: z.string(),
+  months: z.array(
+    z.object({
+      month: z.string(),
+      ...money,
+      collected: z.number().describe('Оплачено в пределах начисленного'),
+      overpaid: z.number().describe('Переплата сверх начисленного'),
+      collectionRate: rate,
+      activeStudents: z.number().describe('Учились хотя бы день'),
+      newStudents: z.number().describe('Впервые пришли в центр'),
+      leftStudents: z.number().describe('Ушли из всех групп'),
+      debtors: z.number(),
+    }),
+  ),
+  totals: z.object({
+    ...money,
+    collected: z.number(),
+    overpaid: z.number(),
+    collectionRate: rate,
+    newStudents: z.number(),
+    leftStudents: z.number(),
+  }),
+});
+
+const breakdownRow = { students: z.number(), ...money, collectionRate: rate };
+
+export const analyticsBreakdown = z.object({
+  month: z.string(),
+  totals: z.object({
+    ...money,
+    unallocated: z.number().describe('Переплаты и оплаты учеников без групп'),
+    collectionRate: rate,
+  }),
+  subjects: z.array(
+    z.object({
+      subjectId: z.number(),
+      name: z.string(),
+      ...breakdownRow,
+      groups: z.array(z.object({ groupId: z.number(), name: z.string(), ...breakdownRow })),
+    }),
+  ),
+});
+
+export const analyticsDaily = z.object({
+  month: z.string(),
+  total: z.number(),
+  count: z.number(),
+  days: z.array(z.object({ date: z.string(), amount: z.number(), count: z.number() })),
+});
+
 // ── Общее ─────────────────────────────────────────────────
 
 export const idParams = z.object({ id: z.coerce.number().int().positive() });

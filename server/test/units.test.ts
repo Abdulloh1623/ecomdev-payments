@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parsePayArgs, splitMessage } from '../src/bot.js';
 import { activeDays, daysInMonth, priceForMonth, proratedCharge } from '../src/lib/billing.js';
+import { toCsv } from '../src/lib/csv.js';
+import { allocatePayment } from '../src/lib/ledger.js';
 import { isValidDate, monthDateRange, todayIn, zonedStartOfDay } from '../src/lib/dates.js';
 import { parseStudentRef, studentCode } from '../src/lib/studentCode.js';
 
@@ -61,6 +63,31 @@ describe('начисления', () => {
     expect(proratedCharge(500_000, 31, 31)).toBe(500_000);
     expect(proratedCharge(500_000, 10, 31)).toBe(161_290);
     expect(proratedCharge(1, 1, 3)).toBe(0);
+  });
+});
+
+describe('распределение оплаты по группам', () => {
+  const line = (charge: number) => ({ groupId: charge, name: '', subjectId: 1, subjectName: '', price: charge, days: 1, charge });
+
+  it('пропорционально начислениям, сумма долей равна распределённой', () => {
+    const e = { studentId: 1, lines: [line(1), line(1), line(1)], due: 3, paid: 2 };
+    const { shares, unallocated } = allocatePayment(e);
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(2);
+    expect(unallocated).toBe(0);
+  });
+
+  it('переплата не распределяется; без групп — всё не распределено', () => {
+    expect(allocatePayment({ studentId: 1, lines: [line(500)], due: 500, paid: 700 })).toEqual({
+      shares: [500],
+      unallocated: 200,
+    });
+    expect(allocatePayment({ studentId: 1, lines: [], due: 0, paid: 50 })).toEqual({ shares: [], unallocated: 50 });
+  });
+});
+
+describe('CSV', () => {
+  it('BOM, «;», экранирование кавычек и разделителей', () => {
+    expect(toCsv(['a', 'b'], [['x;y', 'say "hi"'], [1, null]])).toBe('﻿a;b\r\n"x;y";"say ""hi"""\r\n1;\r\n');
   });
 });
 

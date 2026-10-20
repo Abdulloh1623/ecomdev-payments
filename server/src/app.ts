@@ -14,6 +14,7 @@ import {
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppError } from './errors.js';
+import { analyticsRoutes } from './routes/analytics.js';
 import { debtorRoutes } from './routes/debtors.js';
 import { groupRoutes } from './routes/groups.js';
 import { paymentRoutes } from './routes/payments.js';
@@ -72,6 +73,7 @@ export async function buildApp({ db, timezone, webDist, logger = false }: AppOpt
   await app.register(studentRoutes, { services });
   await app.register(paymentRoutes, { services });
   await app.register(debtorRoutes, { services, timezone });
+  await app.register(analyticsRoutes, { services, timezone });
 
   if (webDist && existsSync(join(webDist, 'index.html'))) {
     await app.register(fastifyStatic, { root: webDist });

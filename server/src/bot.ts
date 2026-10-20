@@ -12,6 +12,7 @@ const HELP = [
   'Учёт оплат учебного центра',
   '',
   '/debt — должники текущего месяца',
+  '/stats — итоги месяца: начислено, оплачено, долг, ученики',
   '/pay <код ученика> <сумма> — внести оплату (дата — сегодня)',
   'Пример: /pay ST-0003 500000 (можно и просто /pay 3 500000)',
 ].join('\n');
@@ -83,6 +84,33 @@ export function createBot({ token, adminIds, services, timezone, log }: BotOptio
       '\n',
     );
     for (const chunk of splitMessage(text)) await ctx.reply(chunk);
+  });
+
+  bot.command('stats', async (ctx) => {
+    const month = currentMonth(timezone);
+    const [summary, breakdown] = await Promise.all([
+      services.analytics.summary(month, month),
+      services.analytics.breakdown(month),
+    ]);
+    const m = summary.months[0];
+    const top = breakdown.subjects
+      .filter((s) => s.debt > 0)
+      .sort((a, b) => b.debt - a.debt)
+      .slice(0, 3);
+
+    const lines = [
+      `Итоги за ${month}`,
+      '',
+      `Начислено: ${fmt(m.due)}`,
+      `Оплачено: ${fmt(m.paid)}${m.overpaid > 0 ? ` (переплата ${fmt(m.overpaid)})` : ''}`,
+      `Долг: ${fmt(m.debt)} — должников ${m.debtors}`,
+      `Собираемость: ${m.collectionRate === null ? '—' : `${m.collectionRate}%`}`,
+      `Учеников: ${m.activeStudents} (новых ${m.newStudents}, ушли ${m.leftStudents})`,
+    ];
+    if (top.length > 0) {
+      lines.push('', 'Больше всего долгов:', ...top.map((s, i) => `${i + 1}. ${s.name} — ${fmt(s.debt)}`));
+    }
+    return ctx.reply(lines.join('\n'));
   });
 
   bot.command('pay', async (ctx) => {

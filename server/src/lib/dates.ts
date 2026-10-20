@@ -22,6 +22,22 @@ export function nextMonth(month: string): string {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
 }
 
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
+}
+
+/** Месяцы от from до to включительно. */
+export function monthsBetween(from: string, to: string): string[] {
+  const months: string[] = [];
+  for (let m = from; m <= to; m = nextMonth(m)) months.push(m);
+  return months;
+}
+
+export function addDays(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Диапазон дат месяца [from, to) для фильтрации оплат. */
 export function monthDateRange(month: string): { from: string; to: string } {
   return { from: `${month}-01`, to: `${nextMonth(month)}-01` };
