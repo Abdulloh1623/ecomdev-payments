@@ -14,9 +14,6 @@
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@fastify/cors": "^11.3.1",
     "@fastify/static": "^10.1.6",

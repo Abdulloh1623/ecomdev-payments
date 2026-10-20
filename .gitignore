@@ -4,5 +4,8 @@ dist/
 *.db-journal
 .env
 coverage/
+# Состояние start.bat: PID, порт, хеш зависимостей
+.run/
+*.stackdump
 # Текст задания не публикуем
 *.txt
