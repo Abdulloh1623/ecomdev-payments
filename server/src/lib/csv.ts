@@ -1,6 +1,7 @@
 // CSV для Excel: разделитель «;» и BOM, чтобы кириллица открывалась без настройки кодировки.
+// Дробные числа — с запятой: при разделителе «;» Excel ждёт русский формат.
 const escape = (v: string | number | null) => {
-  const s = v === null ? '' : String(v);
+  const s = v === null ? '' : typeof v === 'number' ? String(v).replace('.', ',') : v;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 

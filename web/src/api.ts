@@ -1,4 +1,15 @@
-import type { DebtorsReport, Group, GroupInput, Payment, Student, StudentInput, Subject } from './types';
+import type {
+  AnalyticsBreakdown,
+  AnalyticsDaily,
+  AnalyticsSummary,
+  DebtorsReport,
+  Group,
+  GroupInput,
+  Payment,
+  Student,
+  StudentInput,
+  Subject,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -33,6 +44,9 @@ const json = (data: unknown) => JSON.stringify(data);
 
 export const api = {
   debtors: (month: string) => request<DebtorsReport>(`/debtors?month=${encodeURIComponent(month)}`),
+  summary: (from: string, to: string) => request<AnalyticsSummary>(`/analytics/summary?from=${from}&to=${to}`),
+  breakdown: (month: string) => request<AnalyticsBreakdown>(`/analytics/breakdown?month=${month}`),
+  daily: (month: string) => request<AnalyticsDaily>(`/analytics/daily?month=${month}`),
   subjects: () => request<Subject[]>('/subjects'),
   createSubject: (name: string) => request<Subject>('/subjects', { method: 'POST', body: json({ name }) }),
   deleteSubject: (id: number) => request<void>(`/subjects/${id}`, { method: 'DELETE' }),

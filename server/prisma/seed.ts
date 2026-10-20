@@ -69,17 +69,23 @@ async function main() {
     ids.push(created.id);
   }
 
-  // [индекс ученика, сумма]
-  const prev: [number, number][] = [[0, 900_000], [1, 500_000], [2, 400_000], [3, 700_000], [4, 800_000], [5, 1_400_000]];
-  const current: [number, number][] = [[0, 950_000], [1, 250_000], [2, 200_000], [2, 250_000], [4, 300_000]];
-  await db.payment.createMany({
-    data: [
-      ...prev.map(([i, amount]) => ({ studentId: ids[i], amount, date: `${prevMonth}-05` })),
-      ...current.map(([i, amount]) => ({ studentId: ids[i], amount, date: `${month}-01` })),
-    ],
-  });
+  // [индекс ученика, сумма, день месяца]
+  const first: [number, number, number][] = [
+    [0, 900_000, 3], [1, 500_000, 4], [2, 400_000, 4], [3, 1_000_000, 6], [4, 800_000, 10], [5, 1_400_000, 12],
+  ];
+  const prev: [number, number, number][] = [
+    [0, 900_000, 2], [1, 500_000, 5], [2, 400_000, 5], [3, 700_000, 8], [4, 800_000, 9], [5, 1_400_000, 15],
+  ];
+  const current: [number, number, number][] = [[0, 950_000, 1], [1, 250_000, 3], [2, 200_000, 3], [2, 250_000, 6], [4, 300_000, 8]];
+  const day = (m: string, d: number) => `${m}-${String(d).padStart(2, '0')}`;
+  const rows = [
+    ...first.map(([i, amount, d]) => ({ studentId: ids[i], amount, date: day(startMonth, d) })),
+    ...prev.map(([i, amount, d]) => ({ studentId: ids[i], amount, date: day(prevMonth, d) })),
+    ...current.map(([i, amount, d]) => ({ studentId: ids[i], amount, date: day(month, d) })),
+  ];
+  await db.payment.createMany({ data: rows });
 
-  console.log(`Создано: предметов 3, групп 4, учеников ${ids.length}, оплат ${prev.length + current.length}`);
+  console.log(`Создано: предметов 3, групп 4, учеников ${ids.length}, оплат ${rows.length}`);
 }
 
 main()

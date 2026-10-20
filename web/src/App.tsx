@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
+import { AnalyticsView } from './components/AnalyticsView';
 import { DebtorsView } from './components/DebtorsView';
 import { GroupsView } from './components/GroupsView';
 import { PaymentView, type PayPreset } from './components/PaymentView';
 import { StudentsView } from './components/StudentsView';
 
-type Tab = 'debtors' | 'pay' | 'students' | 'groups';
+type Tab = 'debtors' | 'pay' | 'students' | 'groups' | 'analytics';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'debtors', label: 'Должники' },
   { id: 'pay', label: 'Оплата' },
   { id: 'students', label: 'Ученики' },
   { id: 'groups', label: 'Группы' },
+  { id: 'analytics', label: 'Аналитика' },
 ];
 
 export function App() {
@@ -52,6 +54,7 @@ export function App() {
         )}
         {tab === 'students' && <StudentsView onChanged={setToast} />}
         {tab === 'groups' && <GroupsView onChanged={setToast} />}
+        {tab === 'analytics' && <AnalyticsView />}
       </main>
 
       <nav className="tabbar" aria-label="Разделы">

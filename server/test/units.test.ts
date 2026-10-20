@@ -87,7 +87,9 @@ describe('распределение оплаты по группам', () => {
 
 describe('CSV', () => {
   it('BOM, «;», экранирование кавычек и разделителей', () => {
-    expect(toCsv(['a', 'b'], [['x;y', 'say "hi"'], [1, null]])).toBe('﻿a;b\r\n"x;y";"say ""hi"""\r\n1;\r\n');
+    expect(toCsv(['a', 'b'], [['x;y', 'say "hi"'], [1, null], [29.7, '1.5']])).toBe(
+      '﻿a;b\r\n"x;y";"say ""hi"""\r\n1;\r\n29,7;1.5\r\n',
+    );
   });
 });
 

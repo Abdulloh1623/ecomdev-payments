@@ -79,6 +79,47 @@ export interface Debtor {
   groups: ChargeLine[];
 }
 
+export interface SummaryMonth {
+  month: string;
+  due: number;
+  paid: number;
+  collected: number;
+  debt: number;
+  overpaid: number;
+  collectionRate: number | null;
+  activeStudents: number;
+  newStudents: number;
+  leftStudents: number;
+  debtors: number;
+}
+
+export interface AnalyticsSummary {
+  from: string;
+  to: string;
+  months: SummaryMonth[];
+}
+
+interface BreakdownRow {
+  students: number;
+  due: number;
+  paid: number;
+  debt: number;
+  collectionRate: number | null;
+}
+
+export interface AnalyticsBreakdown {
+  month: string;
+  totals: { due: number; paid: number; debt: number; unallocated: number; collectionRate: number | null };
+  subjects: (BreakdownRow & { subjectId: number; name: string; groups: (BreakdownRow & { groupId: number; name: string })[] })[];
+}
+
+export interface AnalyticsDaily {
+  month: string;
+  total: number;
+  count: number;
+  days: { date: string; amount: number; count: number }[];
+}
+
 export interface DebtorsReport {
   month: string;
   count: number;

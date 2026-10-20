@@ -12,6 +12,9 @@ export default defineConfig({
       '/students': apiUrl,
       '/payments': apiUrl,
       '/debtors': apiUrl,
+      '/subjects': apiUrl,
+      '/groups': apiUrl,
+      '/analytics': apiUrl,
     },
   },
 });
