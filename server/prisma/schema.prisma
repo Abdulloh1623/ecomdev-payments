@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id         Int       @id @default(autoincrement())
+  name       String
+  phone      String
+  group      String
+  // Месячная сумма оплаты в целых единицах валюты
+  monthlyFee Int
+  createdAt  DateTime  @default(now())
+  // Мягкое удаление: история оплат сохраняется
+  deletedAt  DateTime?
+  payments   Payment[]
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  amount    Int
+  // Календарная дата оплаты YYYY-MM-DD (без часового пояса)
+  date      String
+  createdAt DateTime @default(now())
+
+  @@index([studentId, date])
+  @@index([date])
+}
