@@ -42,7 +42,7 @@ export function DebtorsView({ onPay }: { onPay: (preset: PayPreset) => void }) {
           ) : (
             <ul className="list" aria-busy={loading}>
               {data.debtors.map((d) => {
-                const paidPct = Math.min(100, Math.round((d.paid / d.monthlyFee) * 100));
+                const paidPct = Math.min(100, Math.round((d.paid / d.due) * 100));
                 return (
                   <li key={d.id} className="card debtor">
                     <div className="row between">
@@ -50,21 +50,27 @@ export function DebtorsView({ onPay }: { onPay: (preset: PayPreset) => void }) {
                         <div className="name">
                           {d.name} {d.deleted && <span className="badge">удалён</span>}
                         </div>
-                        <div className="meta">
-                          #{d.id} · {d.group}
-                        </div>
+                        <div className="meta code">{d.code}</div>
                         <a className="meta num" href={`tel:${d.phone.replace(/[^\d+]/g, '')}`}>
                           {d.phone}
                         </a>
                       </div>
                       <div className="debt num">{fmtMoney(d.debt)}</div>
                     </div>
+                    <div className="chips">
+                      {d.groups.map((g) => (
+                        <span key={`${g.groupId}-${g.days}`} className="chip">
+                          {g.name} · {fmtMoney(g.charge)}
+                          {g.charge !== g.price && ` (${g.days} дн.)`}
+                        </span>
+                      ))}
+                    </div>
                     <div className="progress" role="progressbar" aria-valuenow={paidPct} aria-valuemin={0} aria-valuemax={100}>
                       <span style={{ width: `${paidPct}%` }} />
                     </div>
                     <div className="row between">
                       <span className="meta">
-                        Оплачено {fmtMoney(d.paid)} из {fmtMoney(d.monthlyFee)}
+                        Оплачено {fmtMoney(d.paid)} из {fmtMoney(d.due)}
                       </span>
                       {!d.deleted && (
                         <button className="btn small" onClick={() => onPay({ studentId: d.id, amount: d.debt, month })}>

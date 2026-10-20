@@ -1,4 +1,4 @@
-import type { DebtorsReport, Payment, Student, StudentInput } from './types';
+import type { DebtorsReport, Group, GroupInput, Payment, Student, StudentInput, Subject } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -33,8 +33,18 @@ const json = (data: unknown) => JSON.stringify(data);
 
 export const api = {
   debtors: (month: string) => request<DebtorsReport>(`/debtors?month=${encodeURIComponent(month)}`),
+  subjects: () => request<Subject[]>('/subjects'),
+  createSubject: (name: string) => request<Subject>('/subjects', { method: 'POST', body: json({ name }) }),
+  deleteSubject: (id: number) => request<void>(`/subjects/${id}`, { method: 'DELETE' }),
+  groups: () => request<Group[]>('/groups'),
+  createGroup: (input: GroupInput) => request<Group>('/groups', { method: 'POST', body: json(input) }),
+  updateGroup: (id: number, input: Partial<Omit<GroupInput, 'subjectId'>>) =>
+    request<Group>(`/groups/${id}`, { method: 'PATCH', body: json(input) }),
+  deleteGroup: (id: number) => request<void>(`/groups/${id}`, { method: 'DELETE' }),
   students: () => request<Student[]>('/students'),
   createStudent: (input: StudentInput) => request<Student>('/students', { method: 'POST', body: json(input) }),
+  updateStudent: (id: number, input: StudentInput) =>
+    request<Student>(`/students/${id}`, { method: 'PATCH', body: json(input) }),
   deleteStudent: (id: number) => request<void>(`/students/${id}`, { method: 'DELETE' }),
   payments: (studentId: number) => request<Payment[]>(`/students/${studentId}/payments`),
   createPayment: (input: { studentId: number; amount: number; date: string }) =>

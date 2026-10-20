@@ -27,7 +27,10 @@ export function PaymentView({ preset, onPaid }: { preset: PayPreset | null; onPa
 
   const q = query.trim().toLowerCase();
   const options = (students.data ?? []).filter(
-    (s) => s.id === studentId || !q || `${s.id} ${s.name} ${s.group}`.toLowerCase().includes(q),
+    (s) =>
+      s.id === studentId ||
+      !q ||
+      `${s.code} ${s.name} ${s.groups.map((g) => g.name).join(' ')}`.toLowerCase().includes(q),
   );
   const selected = students.data?.find((s) => s.id === studentId);
 
@@ -42,7 +45,7 @@ export function PaymentView({ preset, onPaid }: { preset: PayPreset | null; onPa
     setSubmitting(true);
     try {
       const payment = await api.createPayment({ studentId, amount: value, date });
-      onPaid(`Оплата ${fmtMoney(payment.amount)} внесена — ${selected?.name ?? `#${studentId}`}`);
+      onPaid(`Оплата ${fmtMoney(payment.amount)} внесена — ${selected ? `${selected.code} ${selected.name}` : studentId}`);
       setAmount('');
       history.reload();
     } catch (err) {
@@ -63,7 +66,7 @@ export function PaymentView({ preset, onPaid }: { preset: PayPreset | null; onPa
           <span>Поиск ученика</span>
           <input
             type="search"
-            placeholder="Имя, группа или id"
+            placeholder="Имя, группа или код ST-…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
@@ -81,11 +84,15 @@ export function PaymentView({ preset, onPaid }: { preset: PayPreset | null; onPa
             <option value="">{students.loading ? 'Загрузка…' : options.length ? 'Выберите ученика' : 'Никого не найдено'}</option>
             {options.map((s) => (
               <option key={s.id} value={s.id}>
-                #{s.id} {s.name} — {s.group}
+                {s.code} {s.name}
               </option>
             ))}
           </select>
-          {selected && <small className="hint">Месячная сумма: {fmtMoney(selected.monthlyFee)}</small>}
+          {selected && (
+            <small className="hint">
+              {selected.groups.map((g) => g.name).join(', ')} · в месяц {fmtMoney(selected.monthlyFee)}
+            </small>
+          )}
         </label>
 
         <div className="grid2">
